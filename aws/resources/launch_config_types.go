@@ -3,30 +3,25 @@ package resources
 import (
 	"context"
 
-	"github.com/aws/aws-sdk-go-v2/aws"
-	"github.com/aws/aws-sdk-go-v2/service/autoscaling"
+	awsgo "github.com/aws/aws-sdk-go/aws"
+	"github.com/aws/aws-sdk-go/aws/session"
+	"github.com/aws/aws-sdk-go/service/autoscaling"
+	"github.com/aws/aws-sdk-go/service/autoscaling/autoscalingiface"
 	"github.com/gruntwork-io/cloud-nuke/config"
 	"github.com/gruntwork-io/go-commons/errors"
 )
 
-type LaunchConfigsAPI interface {
-	DescribeLaunchConfigurations(ctx context.Context, params *autoscaling.DescribeLaunchConfigurationsInput, optFns ...func(*autoscaling.Options)) (*autoscaling.DescribeLaunchConfigurationsOutput, error)
-	DeleteLaunchConfiguration(ctx context.Context, params *autoscaling.DeleteLaunchConfigurationInput, optFns ...func(*autoscaling.Options)) (*autoscaling.DeleteLaunchConfigurationOutput, error)
-}
-
 // LaunchConfigs - represents all launch configurations
 type LaunchConfigs struct {
 	BaseAwsResource
-	Client                   LaunchConfigsAPI
+	Client                   autoscalingiface.AutoScalingAPI
 	Region                   string
 	LaunchConfigurationNames []string
 }
 
-func (lc *LaunchConfigs) InitV2(cfg aws.Config) {
-	lc.Client = autoscaling.NewFromConfig(cfg)
+func (lc *LaunchConfigs) Init(session *session.Session) {
+	lc.Client = autoscaling.New(session)
 }
-
-func (lc *LaunchConfigs) IsUsingV2() bool { return true }
 
 // ResourceName - the simple name of the aws resource
 func (lc *LaunchConfigs) ResourceName() string {
@@ -53,13 +48,13 @@ func (lc *LaunchConfigs) GetAndSetIdentifiers(c context.Context, configObj confi
 		return nil, err
 	}
 
-	lc.LaunchConfigurationNames = aws.ToStringSlice(identifiers)
+	lc.LaunchConfigurationNames = awsgo.StringValueSlice(identifiers)
 	return lc.LaunchConfigurationNames, nil
 }
 
 // Nuke - nuke 'em all!!!
 func (lc *LaunchConfigs) Nuke(identifiers []string) error {
-	if err := lc.nukeAll(aws.StringSlice(identifiers)); err != nil {
+	if err := lc.nukeAll(awsgo.StringSlice(identifiers)); err != nil {
 		return errors.WithStackTrace(err)
 	}
 

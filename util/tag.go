@@ -2,17 +2,16 @@ package util
 
 import (
 	autoscaling "github.com/aws/aws-sdk-go-v2/service/autoscaling/types"
-	iam "github.com/aws/aws-sdk-go-v2/service/iam/types"
-	networkfirewalltypes "github.com/aws/aws-sdk-go-v2/service/networkfirewall/types"
-	rdstype "github.com/aws/aws-sdk-go-v2/service/rds/types"
-	s3types "github.com/aws/aws-sdk-go-v2/service/s3/types"
-
 	"github.com/aws/aws-sdk-go-v2/service/ec2/types"
+	iam "github.com/aws/aws-sdk-go-v2/service/iam/types"
+	rdstypes "github.com/aws/aws-sdk-go-v2/service/rds/types"
 	"github.com/aws/aws-sdk-go/service/ec2"
+	"github.com/aws/aws-sdk-go/service/networkfirewall"
 	"github.com/aws/aws-sdk-go/service/rds"
+	"github.com/aws/aws-sdk-go/service/s3"
 )
 
-func ConvertS3TypesTagsToMap(tags []s3types.Tag) map[string]string {
+func ConvertS3TagsToMap(tags []*s3.Tag) map[string]string {
 	tagMap := make(map[string]string)
 	for _, tag := range tags {
 		tagMap[*tag.Key] = *tag.Value
@@ -66,6 +65,7 @@ func ConvertIAMTagsToMap(tags []iam.Tag) map[string]string {
 	return tagMap
 }
 
+// TODO: Need to remove after migration of rds
 func ConvertRDSTagsToMap(tags []*rds.Tag) map[string]string {
 	tagMap := make(map[string]string)
 	for _, tag := range tags {
@@ -75,6 +75,14 @@ func ConvertRDSTagsToMap(tags []*rds.Tag) map[string]string {
 	return tagMap
 }
 
+func ConvertRDSTypeTagsToMap(tags []rdstypes.Tag) map[string]string {
+	tagMap := make(map[string]string)
+	for _, tag := range tags {
+		tagMap[*tag.Key] = *tag.Value
+	}
+
+	return tagMap
+}
 func GetEC2ResourceNameTagValue[T *ec2.Tag | types.Tag](tags []T) *string {
 	var tagMap map[string]string
 
@@ -93,21 +101,10 @@ func GetEC2ResourceNameTagValue[T *ec2.Tag | types.Tag](tags []T) *string {
 	return nil
 }
 
-func ConvertNetworkFirewallTagsToMap(tags []networkfirewalltypes.Tag) map[string]string {
+func ConvertNetworkFirewallTagsToMap(tags []*networkfirewall.Tag) map[string]string {
 	tagMap := make(map[string]string)
 	for _, tag := range tags {
 		tagMap[*tag.Key] = *tag.Value
-	}
-
-	return tagMap
-}
-
-func ConvertRDSTypeTagsToMap(tags []rdstype.Tag) map[string]string {
-	tagMap := make(map[string]string)
-	for _, tag := range tags {
-		if tag.Key != nil && tag.Value != nil {
-			tagMap[*tag.Key] = *tag.Value
-		}
 	}
 
 	return tagMap

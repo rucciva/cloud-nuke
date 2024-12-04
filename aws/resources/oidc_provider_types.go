@@ -3,30 +3,24 @@ package resources
 import (
 	"context"
 
-	"github.com/aws/aws-sdk-go-v2/aws"
-	"github.com/aws/aws-sdk-go-v2/service/iam"
+	awsgo "github.com/aws/aws-sdk-go/aws"
+	"github.com/aws/aws-sdk-go/aws/session"
+	"github.com/aws/aws-sdk-go/service/iam"
+	"github.com/aws/aws-sdk-go/service/iam/iamiface"
 	"github.com/gruntwork-io/cloud-nuke/config"
 	"github.com/gruntwork-io/go-commons/errors"
 )
 
-type OIDCProvidersAPI interface {
-	ListOpenIDConnectProviders(ctx context.Context, params *iam.ListOpenIDConnectProvidersInput, optFns ...func(*iam.Options)) (*iam.ListOpenIDConnectProvidersOutput, error)
-	GetOpenIDConnectProvider(ctx context.Context, params *iam.GetOpenIDConnectProviderInput, optFns ...func(*iam.Options)) (*iam.GetOpenIDConnectProviderOutput, error)
-	DeleteOpenIDConnectProvider(ctx context.Context, params *iam.DeleteOpenIDConnectProviderInput, optFns ...func(*iam.Options)) (*iam.DeleteOpenIDConnectProviderOutput, error)
-}
-
 // OIDCProviders - represents all AWS OpenID Connect providers that should be deleted.
 type OIDCProviders struct {
 	BaseAwsResource
-	Client       OIDCProvidersAPI
+	Client       iamiface.IAMAPI
 	ProviderARNs []string
 }
 
-func (oidcprovider *OIDCProviders) InitV2(cfg aws.Config) {
-	oidcprovider.Client = iam.NewFromConfig(cfg)
+func (oidcprovider *OIDCProviders) Init(session *session.Session) {
+	oidcprovider.Client = iam.New(session)
 }
-
-func (oidcprovider *OIDCProviders) IsUsingV2() bool { return true }
 
 // ResourceName - the simple name of the aws resource
 func (oidcprovider *OIDCProviders) ResourceName() string {
@@ -55,13 +49,13 @@ func (oidcprovider *OIDCProviders) GetAndSetIdentifiers(c context.Context, confi
 		return nil, err
 	}
 
-	oidcprovider.ProviderARNs = aws.ToStringSlice(identifiers)
+	oidcprovider.ProviderARNs = awsgo.StringValueSlice(identifiers)
 	return oidcprovider.ProviderARNs, nil
 }
 
 // Nuke - nuke 'em all!!!
 func (oidcprovider *OIDCProviders) Nuke(identifiers []string) error {
-	if err := oidcprovider.nukeAll(aws.StringSlice(identifiers)); err != nil {
+	if err := oidcprovider.nukeAll(awsgo.StringSlice(identifiers)); err != nil {
 		return errors.WithStackTrace(err)
 	}
 

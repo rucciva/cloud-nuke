@@ -8,37 +8,41 @@ import (
 	"testing"
 	"time"
 
-	"github.com/aws/aws-sdk-go-v2/aws"
-	"github.com/aws/aws-sdk-go-v2/service/kafka"
-	"github.com/aws/aws-sdk-go-v2/service/kafka/types"
+	"github.com/aws/aws-sdk-go/aws"
+	"github.com/aws/aws-sdk-go/aws/request"
+	"github.com/aws/aws-sdk-go/service/kafka"
+	"github.com/aws/aws-sdk-go/service/kafka/kafkaiface"
 	"github.com/gruntwork-io/cloud-nuke/config"
 )
 
 type mockMSKClient struct {
-	MSKClusterAPI
-	ListClustersV2Output kafka.ListClustersV2Output
-	DeleteClusterOutput  kafka.DeleteClusterOutput
+	kafkaiface.KafkaAPI
+	listClustersV2PagesFn func(input *kafka.ListClustersV2Input, callback func(*kafka.ListClustersV2Output, bool) bool) error
+	deleteClusterFn       func(input *kafka.DeleteClusterInput) (*kafka.DeleteClusterOutput, error)
 }
 
-func (m mockMSKClient) ListClustersV2(ctx context.Context, params *kafka.ListClustersV2Input, optFns ...func(*kafka.Options)) (*kafka.ListClustersV2Output, error) {
-	return &m.ListClustersV2Output, nil
+func (m mockMSKClient) ListClustersV2PagesWithContext(_ aws.Context, input *kafka.ListClustersV2Input, callback func(*kafka.ListClustersV2Output, bool) bool, _ ...request.Option) error {
+	return m.listClustersV2PagesFn(input, callback)
 }
 
-func (m mockMSKClient) DeleteCluster(ctx context.Context, params *kafka.DeleteClusterInput, optFns ...func(*kafka.Options)) (*kafka.DeleteClusterOutput, error) {
-	return &m.DeleteClusterOutput, nil
+func (m mockMSKClient) DeleteClusterWithContext(_ aws.Context, input *kafka.DeleteClusterInput, _ ...request.Option) (*kafka.DeleteClusterOutput, error) {
+	return nil, nil
 }
 
 func TestListMSKClustersSingle(t *testing.T) {
 	mockMskClient := mockMSKClient{
-		ListClustersV2Output: kafka.ListClustersV2Output{
-			ClusterInfoList: []types.Cluster{
-				{
-					ClusterArn:   aws.String("arn:aws:kafka:us-east-1:123456789012:cluster/test-cluster-1/1a2b3c4d-5e6f-7g8h-9i0j-1k2l3m4n5o6p"),
-					ClusterName:  aws.String("test-cluster-1"),
-					CreationTime: aws.Time(time.Now()),
-					State:        types.ClusterStateActive,
+		listClustersV2PagesFn: func(input *kafka.ListClustersV2Input, callback func(*kafka.ListClustersV2Output, bool) bool) error {
+			callback(&kafka.ListClustersV2Output{
+				ClusterInfoList: []*kafka.Cluster{
+					{
+						ClusterArn:   aws.String("arn:aws:kafka:us-east-1:123456789012:cluster/test-cluster-1/1a2b3c4d-5e6f-7g8h-9i0j-1k2l3m4n5o6p"),
+						ClusterName:  aws.String("test-cluster-1"),
+						CreationTime: aws.Time(time.Now()),
+						State:        aws.String(kafka.ClusterStateActive),
+					},
 				},
-			},
+			}, true)
+			return nil
 		},
 	}
 
@@ -62,25 +66,28 @@ func TestListMSKClustersSingle(t *testing.T) {
 
 func TestListMSKClustersMultiple(t *testing.T) {
 	mockMskClient := mockMSKClient{
-		ListClustersV2Output: kafka.ListClustersV2Output{
-			ClusterInfoList: []types.Cluster{
-				{
-					ClusterArn:   aws.String("arn:aws:kafka:us-east-1:123456789012:cluster/test-cluster-1/1a2b3c4d-5e6f-7g8h-9i0j-1k2l3m4n5o6p"),
-					ClusterName:  aws.String("test-cluster-1"),
-					CreationTime: aws.Time(time.Now()),
-					State:        types.ClusterStateActive,
-				}, {
-					ClusterArn:   aws.String("arn:aws:kafka:us-east-1:123456789012:cluster/test-cluster-2/1a2b3c4d-5e6f-7g8h-9i0j-1k2l3m4n5o6p"),
-					ClusterName:  aws.String("test-cluster-2"),
-					CreationTime: aws.Time(time.Now()),
-					State:        types.ClusterStateActive,
-				}, {
-					ClusterArn:   aws.String("arn:aws:kafka:us-east-1:123456789012:cluster/test-cluster-3/1a2b3c4d-5e6f-7g8h-9i0j-1k2l3m4n5o6p"),
-					ClusterName:  aws.String("test-cluster-3"),
-					CreationTime: aws.Time(time.Now()),
-					State:        types.ClusterStateActive,
+		listClustersV2PagesFn: func(input *kafka.ListClustersV2Input, callback func(*kafka.ListClustersV2Output, bool) bool) error {
+			callback(&kafka.ListClustersV2Output{
+				ClusterInfoList: []*kafka.Cluster{
+					{
+						ClusterArn:   aws.String("arn:aws:kafka:us-east-1:123456789012:cluster/test-cluster-1/1a2b3c4d-5e6f-7g8h-9i0j-1k2l3m4n5o6p"),
+						ClusterName:  aws.String("test-cluster-1"),
+						CreationTime: aws.Time(time.Now()),
+						State:        aws.String(kafka.ClusterStateActive),
+					}, {
+						ClusterArn:   aws.String("arn:aws:kafka:us-east-1:123456789012:cluster/test-cluster-2/1a2b3c4d-5e6f-7g8h-9i0j-1k2l3m4n5o6p"),
+						ClusterName:  aws.String("test-cluster-2"),
+						CreationTime: aws.Time(time.Now()),
+						State:        aws.String(kafka.ClusterStateActive),
+					}, {
+						ClusterArn:   aws.String("arn:aws:kafka:us-east-1:123456789012:cluster/test-cluster-3/1a2b3c4d-5e6f-7g8h-9i0j-1k2l3m4n5o6p"),
+						ClusterName:  aws.String("test-cluster-3"),
+						CreationTime: aws.Time(time.Now()),
+						State:        aws.String(kafka.ClusterStateActive),
+					},
 				},
-			},
+			}, true)
+			return nil
 		},
 	}
 
@@ -105,46 +112,63 @@ func TestListMSKClustersMultiple(t *testing.T) {
 	}
 }
 
+func TestGetAllMSKError(t *testing.T) {
+	mockMskClient := mockMSKClient{
+		listClustersV2PagesFn: func(input *kafka.ListClustersV2Input, callback func(*kafka.ListClustersV2Output, bool) bool) error {
+			return fmt.Errorf("Error listing MSK Clusters")
+		},
+	}
+
+	msk := MSKCluster{
+		Client: &mockMskClient,
+	}
+
+	_, err := msk.getAll(context.Background(), config.Config{})
+	if err == nil {
+		t.Fatalf("Expected error listing MSK Clusters")
+	}
+}
+
 func TestShouldIncludeMSKCluster(t *testing.T) {
 	clusterName := "test-cluster"
 	creationTime := time.Now()
 
 	tests := map[string]struct {
-		cluster   types.Cluster
+		cluster   kafka.Cluster
 		configObj config.Config
 		expected  bool
 	}{
 		"cluster is in deleting state": {
-			cluster: types.Cluster{
+			cluster: kafka.Cluster{
 				ClusterName:  &clusterName,
-				State:        types.ClusterStateDeleting,
+				State:        aws.String(kafka.ClusterStateDeleting),
 				CreationTime: &creationTime,
 			},
 			configObj: config.Config{},
 			expected:  false,
 		},
 		"cluster is in creating state": {
-			cluster: types.Cluster{
+			cluster: kafka.Cluster{
 				ClusterName:  &clusterName,
-				State:        types.ClusterStateCreating,
+				State:        aws.String(kafka.ClusterStateCreating),
 				CreationTime: &creationTime,
 			},
 			configObj: config.Config{},
 			expected:  false,
 		},
 		"cluster is in active state": {
-			cluster: types.Cluster{
+			cluster: kafka.Cluster{
 				ClusterName:  &clusterName,
-				State:        types.ClusterStateActive,
+				State:        aws.String(kafka.ClusterStateActive),
 				CreationTime: &creationTime,
 			},
 			configObj: config.Config{},
 			expected:  true,
 		},
 		"cluster excluded by name": {
-			cluster: types.Cluster{
+			cluster: kafka.Cluster{
 				ClusterName:  &clusterName,
-				State:        types.ClusterStateActive,
+				State:        aws.String(kafka.ClusterStateActive),
 				CreationTime: &creationTime,
 			},
 			configObj: config.Config{
@@ -161,9 +185,9 @@ func TestShouldIncludeMSKCluster(t *testing.T) {
 			expected: false,
 		},
 		"cluster included by name": {
-			cluster: types.Cluster{
+			cluster: kafka.Cluster{
 				ClusterName:  &clusterName,
-				State:        types.ClusterStateActive,
+				State:        aws.String(kafka.ClusterStateActive),
 				CreationTime: &creationTime,
 			},
 			configObj: config.Config{
@@ -184,7 +208,7 @@ func TestShouldIncludeMSKCluster(t *testing.T) {
 	for name, tc := range tests {
 		t.Run(name, func(t *testing.T) {
 			msk := MSKCluster{}
-			actual := msk.shouldInclude(tc.cluster, tc.configObj)
+			actual := msk.shouldInclude(&tc.cluster, tc.configObj)
 			if actual != tc.expected {
 				t.Fatalf("Expected %v, got %v", tc.expected, actual)
 			}
@@ -194,7 +218,9 @@ func TestShouldIncludeMSKCluster(t *testing.T) {
 
 func TestNukeMSKCluster(t *testing.T) {
 	mockMskClient := mockMSKClient{
-		DeleteClusterOutput: kafka.DeleteClusterOutput{},
+		deleteClusterFn: func(input *kafka.DeleteClusterInput) (*kafka.DeleteClusterOutput, error) {
+			return nil, nil
+		},
 	}
 
 	msk := MSKCluster{
